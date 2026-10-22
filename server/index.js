@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { getHazards } from './nasaEonet.js';
 import { getAnomaliesForLocation, getGlobalClimateGrid } from './openMeteo.js';
 import { HISTORICAL_HAZARD_EVENTS } from './historicalData.js';
+import { getEarthquakes, HISTORICAL_EARTHQUAKES } from './usgsEarthquakes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,17 +62,41 @@ async function handleHazardsRequest(req, res) {
   try {
     const { status = 'all', days = 365, bbox, category } = req.query;
 
-    const data = await getHazards({
-      status,
-      days: Number(days) || 365,
-      bbox: bbox || null,
-      category: category || null
-    });
+    const [eonetData, earthquakes] = await Promise.all([
+      getHazards({
+        status,
+        days: Number(days) || 365,
+        bbox: bbox || null,
+        category: category && category !== 'earthquake' ? category : null
+      }),
+      (!category || category === 'all' || category === 'earthquake')
+        ? getEarthquakes()
+        : Promise.resolve([])
+    ]);
+
+    let mergedFeatures = [];
+    if (!category || category === 'all') {
+      mergedFeatures = [...(eonetData.features || []), ...earthquakes];
+    } else if (category === 'earthquake') {
+      mergedFeatures = earthquakes;
+    } else {
+      mergedFeatures = eonetData.features || [];
+    }
+
+    const responseData = {
+      type: 'FeatureCollection',
+      metadata: {
+        ...(eonetData.metadata || {}),
+        count: mergedFeatures.length,
+        earthquakesCount: earthquakes.length
+      },
+      features: mergedFeatures
+    };
 
     // Set Edge Cache Control header as specified in spec
     res.setHeader('Cache-Control', 'public, s-maxage=3600, max-age=600, stale-while-revalidate=86400');
     res.setHeader('Content-Type', 'application/geo+json');
-    res.json(data);
+    res.json(responseData);
   } catch (error) {
     console.error('Error handling hazards request:', error);
     res.status(500).json({ error: 'Failed to ingest hazard data', details: error.message });
@@ -134,7 +159,8 @@ app.get('/api/timeline-meta', (req, res) => {
             wildfire: 0,
             volcano: 0,
             storm: 0,
-            anomaly: 0
+            anomaly: 0,
+            earthquake: 0
           },
           peakAnomaly: 0,
           topEvents: []
@@ -143,7 +169,8 @@ app.get('/api/timeline-meta', (req, res) => {
     }
 
     // Index all historical events into histogram buckets
-    for (const evt of HISTORICAL_HAZARD_EVENTS) {
+    const allCatalogEvents = [...HISTORICAL_HAZARD_EVENTS, ...HISTORICAL_EARTHQUAKES];
+    for (const evt of allCatalogEvents) {
       const ts = evt.properties.timestamp;
       const bucket = buckets.find(b => ts >= b.startTs && ts <= b.endTs);
       if (bucket) {
@@ -172,7 +199,7 @@ app.get('/api/timeline-meta', (req, res) => {
       bucketResolution: 'month',
       bucketCount: buckets.length,
       maxDensity: maxCount,
-      totalEvents: HISTORICAL_HAZARD_EVENTS.length,
+      totalEvents: allCatalogEvents.length,
       histogram: buckets.map(b => ({
         ...b,
         normalizedDensity: +(b.total / maxCount).toFixed(3)

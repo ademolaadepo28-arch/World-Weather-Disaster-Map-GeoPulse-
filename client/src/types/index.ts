@@ -1,4 +1,4 @@
-export type HazardCategory = 'wildfire' | 'volcano' | 'storm' | 'anomaly';
+export type HazardCategory = 'wildfire' | 'volcano' | 'storm' | 'anomaly' | 'earthquake';
 
 export type HazardSeverity = 'low' | 'moderate' | 'severe' | 'catastrophic';
 
@@ -13,6 +13,9 @@ export interface HazardProperties {
   magnitudeUnit?: string;
   anomaly_c: number; // Surface temperature variance vs 30-year normal
   trp_mw?: number; // Thermal Radiative Power in Megawatts
+  depth_km?: number; // Focal hypocenter depth in km (earthquakes)
+  tsunami?: boolean; // Tsunami alert indicator (earthquakes)
+  sig?: number; // PAGER impact significance score (earthquakes)
   severity: HazardSeverity;
   description?: string;
   sources?: Array<{ id: string; url: string }>;
@@ -25,7 +28,7 @@ export interface HazardFeature {
   id: string;
   geometry: {
     type: 'Point' | 'MultiPoint';
-    coordinates: [number, number]; // [lon, lat]
+    coordinates: [number, number] | [number, number, number]; // [lon, lat] or [lon, lat, depth]
   };
   properties: HazardProperties;
 }
@@ -56,6 +59,7 @@ export interface HistogramBucket {
     volcano: number;
     storm: number;
     anomaly: number;
+    earthquake?: number;
   };
   peakAnomaly: number;
   topEvents?: Array<{ id: string; title: string; category: string }>;

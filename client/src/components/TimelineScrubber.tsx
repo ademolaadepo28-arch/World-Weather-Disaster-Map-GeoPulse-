@@ -147,6 +147,23 @@ export const TimelineScrubber: React.FC = () => {
                 const y = 36 - barHeight;
 
                 const isPast = bucket.endTs <= currentTimestamp;
+                const cats = bucket.categories || {};
+                const maxVal = Math.max(
+                  cats.wildfire || 0,
+                  cats.volcano || 0,
+                  cats.storm || 0,
+                  cats.anomaly || 0,
+                  cats.earthquake || 0
+                );
+
+                let barColor = isPast ? 'rgba(0, 229, 255, 0.65)' : 'rgba(255, 255, 255, 0.15)';
+                if (isPast && maxVal > 0) {
+                  if (cats.earthquake === maxVal) barColor = 'rgba(245, 158, 11, 0.75)';
+                  else if (cats.wildfire === maxVal) barColor = 'rgba(255, 85, 0, 0.75)';
+                  else if (cats.volcano === maxVal) barColor = 'rgba(255, 0, 85, 0.8)';
+                  else if (cats.storm === maxVal) barColor = 'rgba(0, 229, 255, 0.75)';
+                  else barColor = 'rgba(192, 132, 252, 0.7)';
+                }
 
                 return (
                   <g key={`hist-${i}`}>
@@ -157,7 +174,7 @@ export const TimelineScrubber: React.FC = () => {
                       width={`${barWidth * 0.85}%`}
                       height={barHeight}
                       rx={1}
-                      fill={isPast ? 'rgba(0, 229, 255, 0.65)' : 'rgba(255, 255, 255, 0.15)'}
+                      fill={barColor}
                       style={{ transition: 'fill 0.15s ease' }}
                     />
                   </g>

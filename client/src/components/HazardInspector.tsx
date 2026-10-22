@@ -30,6 +30,8 @@ export const HazardInspector: React.FC = () => {
         return <Mountain size={18} color="#ff0055" />;
       case 'storm':
         return <Zap size={18} color="#00e5ff" />;
+      case 'earthquake':
+        return <Activity size={18} color="#f59e0b" />;
       default:
         return <TrendingUp size={18} color="#c084fc" />;
     }
@@ -43,6 +45,8 @@ export const HazardInspector: React.FC = () => {
         return 'cat-volcano';
       case 'storm':
         return 'cat-storm';
+      case 'earthquake':
+        return 'cat-earthquake';
       default:
         return 'cat-anomaly';
     }
@@ -188,72 +192,142 @@ export const HazardInspector: React.FC = () => {
             </div>
           </div>
 
-          {/* Environmental Metrics (TRP, Magnitude, Anomaly) */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 8
-            }}
-          >
-            {/* TRP */}
+          {/* Environmental & Seismic Metrics */}
+          {props.category === 'earthquake' ? (
             <div
               style={{
-                padding: '10px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255, 85, 0, 0.08)',
-                border: '1px solid rgba(255, 85, 0, 0.25)',
-                textAlign: 'center'
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 8
               }}
             >
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>THERMAL POWER</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#ff7733', fontFamily: 'var(--font-mono)' }}>
-                {props.trp_mw ? `${props.trp_mw.toLocaleString()} MW` : 'N/A'}
-              </div>
-              <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Radiative Flux</div>
-            </div>
-
-            {/* Magnitude */}
-            <div
-              style={{
-                padding: '10px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(0, 229, 255, 0.08)',
-                border: '1px solid rgba(0, 229, 255, 0.25)',
-                textAlign: 'center'
-              }}
-            >
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>MAGNITUDE</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                {props.magnitude ? `${props.magnitude} ${props.magnitudeUnit || ''}` : 'N/A'}
-              </div>
-              <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Calibrated Metric</div>
-            </div>
-
-            {/* Anomaly Delta */}
-            <div
-              style={{
-                padding: '10px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(192, 132, 252, 0.08)',
-                border: '1px solid rgba(192, 132, 252, 0.25)',
-                textAlign: 'center'
-              }}
-            >
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>ERA5 ANOMALY</div>
+              {/* Depth */}
               <div
                 style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: props.anomaly_c >= 0 ? '#f43f5e' : '#38bdf8',
-                  fontFamily: 'var(--font-mono)'
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  textAlign: 'center'
                 }}
               >
-                {props.anomaly_c >= 0 ? `+${props.anomaly_c}` : props.anomaly_c}°C
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>FOCAL DEPTH</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
+                  {props.depth_km !== undefined ? `${props.depth_km} km` : '10.0 km'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>
+                  {props.depth_km && props.depth_km > 70 ? 'Mantle / Wadati' : 'Crustal Hypocenter'}
+                </div>
               </div>
-              <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>vs 30-Yr Normal</div>
+
+              {/* Magnitude */}
+              <div
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0, 229, 255, 0.08)',
+                  border: '1px solid rgba(0, 229, 255, 0.25)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>MAGNITUDE</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                  {props.magnitude ? `M ${props.magnitude}` : 'N/A'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{props.magnitudeUnit || 'MWW'} Scale</div>
+              </div>
+
+              {/* Tsunami Alert */}
+              <div
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: props.tsunami ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+                  border: `1px solid ${props.tsunami ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.25)'}`,
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>TSUNAMI</div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: props.tsunami ? '#ef4444' : '#10b981',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                >
+                  {props.tsunami ? 'WARNING' : 'NONE'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Alert Status</div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 8
+              }}
+            >
+              {/* TRP */}
+              <div
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 85, 0, 0.08)',
+                  border: '1px solid rgba(255, 85, 0, 0.25)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>THERMAL POWER</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#ff7733', fontFamily: 'var(--font-mono)' }}>
+                  {props.trp_mw ? `${props.trp_mw.toLocaleString()} MW` : 'N/A'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Radiative Flux</div>
+              </div>
+
+              {/* Magnitude */}
+              <div
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0, 229, 255, 0.08)',
+                  border: '1px solid rgba(0, 229, 255, 0.25)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>MAGNITUDE</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                  {props.magnitude ? `${props.magnitude} ${props.magnitudeUnit || ''}` : 'N/A'}
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Calibrated Metric</div>
+              </div>
+
+              {/* Anomaly Delta */}
+              <div
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(192, 132, 252, 0.08)',
+                  border: '1px solid rgba(192, 132, 252, 0.25)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>ERA5 ANOMALY</div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: props.anomaly_c >= 0 ? '#f43f5e' : '#38bdf8',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                >
+                  {props.anomaly_c >= 0 ? `+${props.anomaly_c}` : props.anomaly_c}°C
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>vs 30-Yr Normal</div>
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           {props.description && (

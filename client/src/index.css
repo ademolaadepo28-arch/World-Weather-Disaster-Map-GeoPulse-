@@ -249,6 +249,11 @@ html, body, #root {
   color: #d8b4fe;
   border: 1px solid rgba(192, 132, 252, 0.3);
 }
+.cat-earthquake {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
 
 /* Custom Range Slider */
 .timeline-slider-input {

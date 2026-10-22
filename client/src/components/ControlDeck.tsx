@@ -5,6 +5,7 @@ import {
   Mountain,
   Zap,
   TrendingUp,
+  Activity,
   Wind,
   Thermometer,
   Compass,
@@ -15,7 +16,10 @@ import {
   ChevronUp,
   MapPin,
   Sliders,
-  Globe
+  Globe,
+  Download,
+  FileText,
+  Table
 } from 'lucide-react';
 import { useGeoStore, MAP_PRESETS } from '../store/useGeoStore';
 
@@ -31,6 +35,8 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({ onFlyToPreset }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showEarthquakes,
+    showPlateBoundaries,
     showWindField,
     showThermalHeat,
     showIsobars,
@@ -48,7 +54,44 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({ onFlyToPreset }) => {
     wildfire: allFeatures.filter((f) => f.properties.category === 'wildfire').length,
     volcano: allFeatures.filter((f) => f.properties.category === 'volcano').length,
     storm: allFeatures.filter((f) => f.properties.category === 'storm').length,
-    anomaly: allFeatures.filter((f) => f.properties.category === 'anomaly').length
+    anomaly: allFeatures.filter((f) => f.properties.category === 'anomaly').length,
+    earthquake: allFeatures.filter((f) => f.properties.category === 'earthquake').length
+  };
+
+  const exportGeoJSON = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+      type: 'FeatureCollection',
+      features: allFeatures
+    }, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `geopulse_hazards_${new Date().toISOString().split('T')[0]}.geojson`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const exportCSV = () => {
+    const headers = ['id', 'title', 'category', 'date', 'latitude', 'longitude', 'magnitude', 'severity', 'depth_km', 'anomaly_c'];
+    const rows = allFeatures.map((f) => [
+      `"${f.id}"`,
+      `"${f.properties.title.replace(/"/g, '""')}"`,
+      `"${f.properties.category}"`,
+      `"${f.properties.dateStr}"`,
+      f.geometry.coordinates[1],
+      f.geometry.coordinates[0],
+      f.properties.magnitude ?? '',
+      `"${f.properties.severity}"`,
+      f.properties.depth_km ?? '',
+      f.properties.anomaly_c ?? ''
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers.join(','), ...rows.map((r) => r.join(','))].join('\n'));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', csvContent);
+    downloadAnchor.setAttribute('download', `geopulse_hazards_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   return (
@@ -131,6 +174,39 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({ onFlyToPreset }) => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Earthquakes */}
+                <div
+                  onClick={() => toggleLayer('showEarthquakes')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: showEarthquakes ? 'rgba(245, 158, 11, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px solid ${showEarthquakes ? 'rgba(245, 158, 11, 0.4)' : 'var(--border-subtle)'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Activity size={15} color="#f59e0b" />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Earthquakes</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--text-dim)',
+                        fontFamily: 'var(--font-mono)'
+                      }}
+                    >
+                      {counts.earthquake}
+                    </span>
+                    {showEarthquakes ? <Eye size={14} color="#f59e0b" /> : <EyeOff size={14} color="#64748b" />}
+                  </div>
+                </div>
+
                 {/* Wildfires */}
                 <div
                   onClick={() => toggleLayer('showWildfires')}
@@ -280,10 +356,31 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({ onFlyToPreset }) => {
                 }}
               >
                 <Compass size={12} />
-                <span>Atmospheric Overlays</span>
+                <span>Geophysical &amp; Atmospheric Overlays</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Tectonic Plate Boundaries */}
+                <div
+                  onClick={() => toggleLayer('showPlateBoundaries')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: showPlateBoundaries ? 'rgba(239, 68, 68, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px solid ${showPlateBoundaries ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-subtle)'}`,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Compass size={15} color="#ef4444" />
+                    <span style={{ fontSize: 13 }}>Tectonic Plate Boundaries</span>
+                  </div>
+                  {showPlateBoundaries ? <Eye size={14} color="#ef4444" /> : <EyeOff size={14} color="#64748b" />}
+                </div>
+
                 <div
                   onClick={() => toggleLayer('showWindField')}
                   style={{
@@ -451,6 +548,45 @@ export const ControlDeck: React.FC<ControlDeckProps> = ({ onFlyToPreset }) => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* 5. GIS Data Export */}
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}
+              >
+                <Download size={12} />
+                <span>Export Geospatial Data</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <button
+                  onClick={exportGeoJSON}
+                  className="btn-gis"
+                  style={{ justifyContent: 'center', fontSize: 11, padding: '6px' }}
+                  title="Export currently loaded features as standardized GeoJSON"
+                >
+                  <FileText size={13} style={{ marginRight: 4 }} />
+                  GeoJSON
+                </button>
+                <button
+                  onClick={exportCSV}
+                  className="btn-gis"
+                  style={{ justifyContent: 'center', fontSize: 11, padding: '6px' }}
+                  title="Export currently loaded features as tabular CSV"
+                >
+                  <Table size={13} style={{ marginRight: 4 }} />
+                  CSV Table
+                </button>
               </div>
             </div>
           </div>

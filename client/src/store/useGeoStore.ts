@@ -55,6 +55,15 @@ export const MAP_PRESETS: MapPreset[] = [
     category: 'volcano'
   },
   {
+    id: 'turkey_earthquake',
+    name: 'Turkey–Syria Megathrust Strike-Slip',
+    description: 'Feb 2023 catastrophic Mw 7.8 & 7.5 doublet rupturing 300+ km along East Anatolian Fault.',
+    center: [37.1, 37.5],
+    zoom: 6.2,
+    targetDate: '2023-02-06',
+    category: 'earthquake'
+  },
+  {
     id: 'global_all',
     name: 'Global Environmental Panorama',
     description: 'Worldwide perspective over 50,000 environmental telemetry nodes.',
@@ -77,6 +86,8 @@ interface GeoState {
   showVolcanoes: boolean;
   showStorms: boolean;
   showAnomalies: boolean;
+  showEarthquakes: boolean;
+  showPlateBoundaries: boolean;
   showWindField: boolean;
   showThermalHeat: boolean;
   showIsobars: boolean;
@@ -143,6 +154,8 @@ export const useGeoStore = create<GeoState>((set, get) => ({
   showVolcanoes: true,
   showStorms: true,
   showAnomalies: true,
+  showEarthquakes: true,
+  showPlateBoundaries: true,
   showWindField: true,
   showThermalHeat: true,
   showIsobars: true,
@@ -248,6 +261,7 @@ export const useGeoStore = create<GeoState>((set, get) => ({
       if (preset.category === 'volcano') set({ showVolcanoes: true });
       if (preset.category === 'storm') set({ showStorms: true });
       if (preset.category === 'anomaly') set({ showAnomalies: true });
+      if (preset.category === 'earthquake') set({ showEarthquakes: true });
     }
 
     if (jumpToMapCallback) {

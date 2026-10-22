@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { Map, NavigationControl, type MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGeoStore } from '../store/useGeoStore';
+import { TECTONIC_PLATES_GEOJSON } from '../data/tectonicPlates';
 import type { HazardFeature } from '../types';
 
 interface MapCanvasProps {
@@ -54,6 +55,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showEarthquakes,
+    showPlateBoundaries,
     showThermalHeat,
     showIsobars,
     clusteringEnabled,
@@ -121,6 +124,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     if (showVolcanoes) activeCategories.push('volcano');
     if (showStorms) activeCategories.push('storm');
     if (showAnomalies) activeCategories.push('anomaly');
+    if (showEarthquakes) activeCategories.push('earthquake');
 
     worker.postMessage({
       type: 'QUERY_VIEWPORT',
@@ -139,6 +143,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showEarthquakes,
     minSeverity,
     clusteringEnabled
   ]);
@@ -215,7 +220,39 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         data: generateIsobarsGeoJSON()
       });
 
-      // 4. Native WebGL Heatmap Layer (for Thermal Heat Anomaly)
+      // 4. Global Tectonic Plate Boundaries GeoJSON Source
+      map.addSource('tectonic-plates-source', {
+        type: 'geojson',
+        data: TECTONIC_PLATES_GEOJSON
+      });
+
+      // 5. Tectonic Plates Glowing Halo Layer
+      map.addLayer({
+        id: 'tectonic-plates-glow',
+        type: 'line',
+        source: 'tectonic-plates-source',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 4,
+          'line-opacity': 0.35,
+          'line-blur': 1.5
+        }
+      });
+
+      // 6. Tectonic Plates Core Dashed Fault Lines
+      map.addLayer({
+        id: 'tectonic-plates-core',
+        type: 'line',
+        source: 'tectonic-plates-source',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.6,
+          'line-dasharray': [4, 2],
+          'line-opacity': 0.8
+        }
+      });
+
+      // 7. Native WebGL Heatmap Layer (for Thermal Heat Anomaly)
       map.addLayer({
         id: 'hazard-heatmap',
         type: 'heatmap',
@@ -260,7 +297,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 5. Isobar Pressure Contour Lines
+      // 8. Isobar Pressure Contour Lines
       map.addLayer({
         id: 'isobar-lines',
         type: 'line',
@@ -273,7 +310,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 6. Isobar Pressure Labels
+      // 9. Isobar Pressure Labels
       map.addLayer({
         id: 'isobar-labels',
         type: 'symbol',
@@ -291,7 +328,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 7. Add Cluster Circles
+      // 10. Add Cluster Circles
       map.addLayer({
         id: 'hazard-clusters',
         type: 'circle',
@@ -327,7 +364,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 8. Add Cluster Count Labels
+      // 11. Add Cluster Count Labels
       map.addLayer({
         id: 'cluster-count',
         type: 'symbol',
@@ -343,7 +380,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 9. Glowing Halos (Clustered Source)
+      // 12. Glowing Halos (Clustered Source)
       map.addLayer({
         id: 'hazard-halo',
         type: 'circle',
@@ -365,13 +402,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'volcano', 'rgba(255, 0, 85, 0.4)',
             'storm', 'rgba(0, 229, 255, 0.35)',
             'anomaly', 'rgba(192, 132, 252, 0.35)',
+            'earthquake', 'rgba(245, 158, 11, 0.4)',
             'rgba(255, 255, 255, 0.2)'
           ],
           'circle-blur': 0.6
         }
       });
 
-      // 10. Individual Core Points (Clustered Source)
+      // 13. Individual Core Points (Clustered Source)
       map.addLayer({
         id: 'hazard-points',
         type: 'circle',
@@ -393,6 +431,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'volcano', '#ff0055',
             'storm', '#00e5ff',
             'anomaly', '#c084fc',
+            'earthquake', '#f59e0b',
             '#ffffff'
           ],
           'circle-stroke-width': 1.8,
@@ -402,7 +441,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 11. Glowing Halos (Raw Unclustered Source)
+      // 14. Glowing Halos (Raw Unclustered Source)
       map.addLayer({
         id: 'hazard-halo-raw',
         type: 'circle',
@@ -424,13 +463,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'volcano', 'rgba(255, 0, 85, 0.4)',
             'storm', 'rgba(0, 229, 255, 0.35)',
             'anomaly', 'rgba(192, 132, 252, 0.35)',
+            'earthquake', 'rgba(245, 158, 11, 0.4)',
             'rgba(255, 255, 255, 0.2)'
           ],
           'circle-blur': 0.6
         }
       });
 
-      // 12. Individual Core Points (Raw Unclustered Source)
+      // 15. Individual Core Points (Raw Unclustered Source)
       map.addLayer({
         id: 'hazard-points-raw',
         type: 'circle',
@@ -452,6 +492,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'volcano', '#ff0055',
             'storm', '#00e5ff',
             'anomaly', '#c084fc',
+            'earthquake', '#f59e0b',
             '#ffffff'
           ],
           'circle-stroke-width': 1.8,
@@ -468,19 +509,23 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         const props = feat.properties as any;
         const geom = feat.geometry as any;
 
+        const coords = geom.coordinates;
         const hazardFeature: HazardFeature = {
           type: 'Feature',
           id: props.id || feat.id?.toString() || 'unknown',
           geometry: {
             type: 'Point',
-            coordinates: [geom.coordinates[0], geom.coordinates[1]]
+            coordinates: [coords[0], coords[1]]
           },
           properties: {
             ...props,
             timestamp: Number(props.timestamp),
             magnitude: props.magnitude ? Number(props.magnitude) : null,
             anomaly_c: props.anomaly_c ? Number(props.anomaly_c) : 0,
-            trp_mw: props.trp_mw ? Number(props.trp_mw) : undefined
+            trp_mw: props.trp_mw ? Number(props.trp_mw) : undefined,
+            depth_km: props.depth_km ? Number(props.depth_km) : undefined,
+            tsunami: props.tsunami === true || props.tsunami === 'true',
+            sig: props.sig ? Number(props.sig) : undefined
           }
         };
 
@@ -568,6 +613,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     if (showVolcanoes) activeCategories.push('volcano');
     if (showStorms) activeCategories.push('storm');
     if (showAnomalies) activeCategories.push('anomaly');
+    if (showEarthquakes) activeCategories.push('earthquake');
 
     // Build WebGL filter expression:
     // Safe category filter handling empty array gracefully
@@ -622,6 +668,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
       const rawVis = clusteringEnabled ? 'none' : 'visible';
       const heatVis = showThermalHeat ? 'visible' : 'none';
       const isobarsVis = showIsobars ? 'visible' : 'none';
+      const platesVis = showPlateBoundaries ? 'visible' : 'none';
 
       if (map.getLayer('hazard-clusters')) {
         map.setLayoutProperty('hazard-clusters', 'visibility', clusteredVis);
@@ -650,6 +697,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
       if (map.getLayer('isobar-labels')) {
         map.setLayoutProperty('isobar-labels', 'visibility', isobarsVis);
       }
+      if (map.getLayer('tectonic-plates-glow')) {
+        map.setLayoutProperty('tectonic-plates-glow', 'visibility', platesVis);
+      }
+      if (map.getLayer('tectonic-plates-core')) {
+        map.setLayoutProperty('tectonic-plates-core', 'visibility', platesVis);
+      }
     } catch {
       // Ignore initial render race condition
     }
@@ -661,6 +714,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showEarthquakes,
+    showPlateBoundaries,
     showThermalHeat,
     showIsobars,
     clusteringEnabled,

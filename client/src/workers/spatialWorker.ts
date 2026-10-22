@@ -82,7 +82,7 @@ self.onmessage = (e: MessageEvent) => {
         Math.min(85, bbox[3])
       ];
 
-      const activeCategories = new Set<HazardCategory>(categories || ['wildfire', 'volcano', 'storm', 'anomaly']);
+      const activeCategories = new Set<HazardCategory>(categories || ['wildfire', 'volcano', 'storm', 'anomaly', 'earthquake']);
 
       const severityRank: Record<HazardSeverity, number> = {
         low: 1,
