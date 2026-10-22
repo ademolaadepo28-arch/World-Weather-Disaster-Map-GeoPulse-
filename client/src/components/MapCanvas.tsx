@@ -8,6 +8,40 @@ interface MapCanvasProps {
   onMapReady?: (map: Map) => void;
 }
 
+// Generate realistic meteorological isobar contours based on planetary atmospheric cells
+function generateIsobarsGeoJSON(): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  const pressureLevels = [
+    { hpa: 992, lats: [62, -62], label: '992 hPa Subpolar Low' },
+    { hpa: 1004, lats: [50, -50], label: '1004 hPa Frontal Trough' },
+    { hpa: 1012, lats: [38, -38], label: '1012 hPa Normal' },
+    { hpa: 1022, lats: [28, -28], label: '1022 hPa Subtropical High' },
+    { hpa: 1026, lats: [18, -18], label: '1026 hPa Thermal Ridge' },
+    { hpa: 1014, lats: [2], label: '1014 hPa Intertropical Convergence Zone' }
+  ];
+
+  pressureLevels.forEach(({ hpa, lats, label }) => {
+    lats.forEach((baseLat) => {
+      const coords: [number, number][] = [];
+      for (let lon = -180; lon <= 180; lon += 4) {
+        // Rossby wave harmonic oscillations
+        const wave = Math.sin((lon * Math.PI) / 60) * 5.5 + Math.cos((lon * Math.PI) / 30) * 2.8;
+        coords.push([lon, Math.max(-85, Math.min(85, baseLat + wave))]);
+      }
+      features.push({
+        type: 'Feature',
+        properties: { pressure: hpa, label },
+        geometry: {
+          type: 'LineString',
+          coordinates: coords
+        }
+      });
+    });
+  });
+
+  return { type: 'FeatureCollection', features };
+}
+
 export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<Map | null>(null);
@@ -20,6 +54,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showThermalHeat,
+    showIsobars,
     clusteringEnabled,
     minSeverity,
     selectHazard,
@@ -148,7 +184,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     map.addControl(new NavigationControl({ showCompass: true }), 'top-right');
 
     map.on('load', () => {
-      // 1. Add Hazards GeoJSON Source
+      // 1. Clustered Hazards GeoJSON Source
       map.addSource('hazards-source', {
         type: 'geojson',
         data: {
@@ -157,10 +193,105 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         },
         cluster: true,
         clusterMaxZoom: 14,
-        clusterRadius: 50
+        clusterRadius: 50,
+        clusterProperties: {
+          minTimestamp: ['min', ['get', 'timestamp']]
+        }
       });
 
-      // 2. Add Cluster Circles
+      // 2. Unclustered Raw Hazards GeoJSON Source
+      map.addSource('hazards-raw-source', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: []
+        },
+        cluster: false
+      });
+
+      // 3. Meteorological Isobars GeoJSON Source
+      map.addSource('isobars-source', {
+        type: 'geojson',
+        data: generateIsobarsGeoJSON()
+      });
+
+      // 4. Native WebGL Heatmap Layer (for Thermal Heat Anomaly)
+      map.addLayer({
+        id: 'hazard-heatmap',
+        type: 'heatmap',
+        source: 'hazards-raw-source',
+        paint: {
+          'heatmap-weight': [
+            'interpolate',
+            ['linear'],
+            ['abs', ['coalesce', ['get', 'anomaly_c'], 1]],
+            0, 0.1,
+            5, 0.6,
+            12, 1.0
+          ],
+          'heatmap-intensity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            0, 1.2,
+            6, 2.5,
+            10, 4.0
+          ],
+          'heatmap-color': [
+            'interpolate',
+            ['linear'],
+            ['heatmap-density'],
+            0, 'rgba(0, 0, 0, 0)',
+            0.2, 'rgba(0, 229, 255, 0.25)',
+            0.4, 'rgba(16, 185, 129, 0.45)',
+            0.6, 'rgba(255, 200, 0, 0.65)',
+            0.8, 'rgba(255, 85, 0, 0.8)',
+            1.0, 'rgba(255, 0, 85, 0.95)'
+          ],
+          'heatmap-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            0, 8,
+            4, 18,
+            8, 36
+          ],
+          'heatmap-opacity': 0.75
+        }
+      });
+
+      // 5. Isobar Pressure Contour Lines
+      map.addLayer({
+        id: 'isobar-lines',
+        type: 'line',
+        source: 'isobars-source',
+        paint: {
+          'line-color': '#60a5fa',
+          'line-width': 1.2,
+          'line-dasharray': [3, 2],
+          'line-opacity': 0.55
+        }
+      });
+
+      // 6. Isobar Pressure Labels
+      map.addLayer({
+        id: 'isobar-labels',
+        type: 'symbol',
+        source: 'isobars-source',
+        layout: {
+          'text-field': '{label}',
+          'symbol-placement': 'line',
+          'text-size': 10,
+          'text-font': ['Open Sans Bold']
+        },
+        paint: {
+          'text-color': '#93c5fd',
+          'text-halo-color': '#070a11',
+          'text-halo-width': 1.5
+        }
+      });
+
+      // 7. Add Cluster Circles
       map.addLayer({
         id: 'hazard-clusters',
         type: 'circle',
@@ -196,7 +327,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 3. Add Cluster Count Labels
+      // 8. Add Cluster Count Labels
       map.addLayer({
         id: 'cluster-count',
         type: 'symbol',
@@ -212,7 +343,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // 4. Add Glowing Outer Halos for Individual Hazard Events
+      // 9. Glowing Halos (Clustered Source)
       map.addLayer({
         id: 'hazard-halo',
         type: 'circle',
@@ -223,31 +354,24 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'interpolate',
             ['linear'],
             ['zoom'],
-            2,
-            10,
-            6,
-            18,
-            12,
-            28
+            2, 10,
+            6, 18,
+            12, 28
           ],
           'circle-color': [
             'match',
             ['get', 'category'],
-            'wildfire',
-            'rgba(255, 85, 0, 0.35)',
-            'volcano',
-            'rgba(255, 0, 85, 0.4)',
-            'storm',
-            'rgba(0, 229, 255, 0.35)',
-            'anomaly',
-            'rgba(192, 132, 252, 0.35)',
+            'wildfire', 'rgba(255, 85, 0, 0.35)',
+            'volcano', 'rgba(255, 0, 85, 0.4)',
+            'storm', 'rgba(0, 229, 255, 0.35)',
+            'anomaly', 'rgba(192, 132, 252, 0.35)',
             'rgba(255, 255, 255, 0.2)'
           ],
           'circle-blur': 0.6
         }
       });
 
-      // 5. Add Individual Core Hazard Points
+      // 10. Individual Core Points (Clustered Source)
       map.addLayer({
         id: 'hazard-points',
         type: 'circle',
@@ -258,24 +382,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
             'interpolate',
             ['linear'],
             ['zoom'],
-            2,
-            4.5,
-            6,
-            7.5,
-            12,
-            13
+            2, 4.5,
+            6, 7.5,
+            12, 13
           ],
           'circle-color': [
             'match',
             ['get', 'category'],
-            'wildfire',
-            '#ff5500',
-            'volcano',
-            '#ff0055',
-            'storm',
-            '#00e5ff',
-            'anomaly',
-            '#c084fc',
+            'wildfire', '#ff5500',
+            'volcano', '#ff0055',
+            'storm', '#00e5ff',
+            'anomaly', '#c084fc',
             '#ffffff'
           ],
           'circle-stroke-width': 1.8,
@@ -285,8 +402,67 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         }
       });
 
-      // Interactive Click on Individual Hazard Point
-      map.on('click', 'hazard-points', (e: MapLayerMouseEvent) => {
+      // 11. Glowing Halos (Raw Unclustered Source)
+      map.addLayer({
+        id: 'hazard-halo-raw',
+        type: 'circle',
+        source: 'hazards-raw-source',
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2, 10,
+            6, 18,
+            12, 28
+          ],
+          'circle-color': [
+            'match',
+            ['get', 'category'],
+            'wildfire', 'rgba(255, 85, 0, 0.35)',
+            'volcano', 'rgba(255, 0, 85, 0.4)',
+            'storm', 'rgba(0, 229, 255, 0.35)',
+            'anomaly', 'rgba(192, 132, 252, 0.35)',
+            'rgba(255, 255, 255, 0.2)'
+          ],
+          'circle-blur': 0.6
+        }
+      });
+
+      // 12. Individual Core Points (Raw Unclustered Source)
+      map.addLayer({
+        id: 'hazard-points-raw',
+        type: 'circle',
+        source: 'hazards-raw-source',
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2, 4.5,
+            6, 7.5,
+            12, 13
+          ],
+          'circle-color': [
+            'match',
+            ['get', 'category'],
+            'wildfire', '#ff5500',
+            'volcano', '#ff0055',
+            'storm', '#00e5ff',
+            'anomaly', '#c084fc',
+            '#ffffff'
+          ],
+          'circle-stroke-width': 1.8,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': 0.95,
+          'circle-opacity': 0.95
+        }
+      });
+
+      // Common Click Handler on Individual Hazard Point
+      const handlePointClick = (e: MapLayerMouseEvent) => {
         if (!e.features || !e.features.length) return;
         const feat = e.features[0];
         const props = feat.properties as any;
@@ -309,7 +485,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
         };
 
         selectHazard(hazardFeature);
-      });
+      };
+
+      map.on('click', 'hazard-points', handlePointClick);
+      map.on('click', 'hazard-points-raw', handlePointClick);
 
       // Interactive Click on Cluster -> Zoom In
       map.on('click', 'hazard-clusters', (e: MapLayerMouseEvent) => {
@@ -330,18 +509,15 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
       });
 
       // Cursor Pointers
-      map.on('mouseenter', 'hazard-points', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'hazard-points', () => {
-        map.getCanvas().style.cursor = '';
-      });
-      map.on('mouseenter', 'hazard-clusters', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'hazard-clusters', () => {
-        map.getCanvas().style.cursor = '';
-      });
+      const setPointer = () => { map.getCanvas().style.cursor = 'pointer'; };
+      const resetPointer = () => { map.getCanvas().style.cursor = ''; };
+
+      map.on('mouseenter', 'hazard-points', setPointer);
+      map.on('mouseleave', 'hazard-points', resetPointer);
+      map.on('mouseenter', 'hazard-points-raw', setPointer);
+      map.on('mouseleave', 'hazard-points-raw', resetPointer);
+      map.on('mouseenter', 'hazard-clusters', setPointer);
+      map.on('mouseleave', 'hazard-clusters', resetPointer);
 
       map.on('moveend', () => {
         triggerViewportQuery();
@@ -362,18 +538,27 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     const map = mapInstanceRef.current;
     if (!map || !map.isStyleLoaded()) return;
 
-    const source: any = map.getSource('hazards-source');
-    if (source) {
-      source.setData({
+    const sourceClustered: any = map.getSource('hazards-source');
+    const sourceRaw: any = map.getSource('hazards-raw-source');
+
+    if (sourceClustered) {
+      sourceClustered.setData({
         type: 'FeatureCollection',
         features: allFeatures
       });
-      triggerViewportQuery();
     }
+
+    if (sourceRaw) {
+      sourceRaw.setData({
+        type: 'FeatureCollection',
+        features: allFeatures
+      });
+    }
+
+    triggerViewportQuery();
   }, [allFeatures, triggerViewportQuery]);
 
-  // Direct GPU WebGL Filter Execution (Section 4 Performance Model)
-  // Direct GPU Filtering: The active date range updates layer filter expressions directly in WebGL memory
+  // Direct GPU WebGL Filter Execution & Layer Visibility Management
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -385,8 +570,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     if (showAnomalies) activeCategories.push('anomaly');
 
     // Build WebGL filter expression:
-    // (timestamp <= currentTimestamp) AND (category in activeCategories) AND (severity >= minSeverity)
-    const categoryFilter = ['match', ['get', 'category'], activeCategories, true, false];
+    // Safe category filter handling empty array gracefully
+    const categoryFilter = activeCategories.length > 0
+      ? ['in', ['get', 'category'], ['literal', activeCategories]]
+      : ['==', 1, 0];
+
     const timeFilter = ['<=', ['get', 'timestamp'], currentTimestamp];
 
     let combinedFilter: any[];
@@ -403,12 +591,64 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
       combinedFilter = ['all', timeFilter, categoryFilter];
     }
 
+    const clusterFilter = ['all', ['has', 'point_count'], ['<=', ['get', 'minTimestamp'], currentTimestamp]];
+
     try {
+      // 1. Update filter expressions in WebGL memory
       if (map.getLayer('hazard-points')) {
         map.setFilter('hazard-points', ['all', ['!', ['has', 'point_count']], combinedFilter] as any);
       }
       if (map.getLayer('hazard-halo')) {
         map.setFilter('hazard-halo', ['all', ['!', ['has', 'point_count']], combinedFilter] as any);
+      }
+      if (map.getLayer('hazard-points-raw')) {
+        map.setFilter('hazard-points-raw', combinedFilter as any);
+      }
+      if (map.getLayer('hazard-halo-raw')) {
+        map.setFilter('hazard-halo-raw', combinedFilter as any);
+      }
+      if (map.getLayer('hazard-clusters')) {
+        map.setFilter('hazard-clusters', clusterFilter as any);
+      }
+      if (map.getLayer('cluster-count')) {
+        map.setFilter('cluster-count', clusterFilter as any);
+      }
+      if (map.getLayer('hazard-heatmap')) {
+        map.setFilter('hazard-heatmap', combinedFilter as any);
+      }
+
+      // 2. Dynamic Layer Visibility Management
+      const clusteredVis = clusteringEnabled ? 'visible' : 'none';
+      const rawVis = clusteringEnabled ? 'none' : 'visible';
+      const heatVis = showThermalHeat ? 'visible' : 'none';
+      const isobarsVis = showIsobars ? 'visible' : 'none';
+
+      if (map.getLayer('hazard-clusters')) {
+        map.setLayoutProperty('hazard-clusters', 'visibility', clusteredVis);
+      }
+      if (map.getLayer('cluster-count')) {
+        map.setLayoutProperty('cluster-count', 'visibility', clusteredVis);
+      }
+      if (map.getLayer('hazard-points')) {
+        map.setLayoutProperty('hazard-points', 'visibility', clusteredVis);
+      }
+      if (map.getLayer('hazard-halo')) {
+        map.setLayoutProperty('hazard-halo', 'visibility', clusteredVis);
+      }
+      if (map.getLayer('hazard-points-raw')) {
+        map.setLayoutProperty('hazard-points-raw', 'visibility', rawVis);
+      }
+      if (map.getLayer('hazard-halo-raw')) {
+        map.setLayoutProperty('hazard-halo-raw', 'visibility', rawVis);
+      }
+      if (map.getLayer('hazard-heatmap')) {
+        map.setLayoutProperty('hazard-heatmap', 'visibility', heatVis);
+      }
+      if (map.getLayer('isobar-lines')) {
+        map.setLayoutProperty('isobar-lines', 'visibility', isobarsVis);
+      }
+      if (map.getLayer('isobar-labels')) {
+        map.setLayoutProperty('isobar-labels', 'visibility', isobarsVis);
       }
     } catch {
       // Ignore initial render race condition
@@ -421,6 +661,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
     showVolcanoes,
     showStorms,
     showAnomalies,
+    showThermalHeat,
+    showIsobars,
+    clusteringEnabled,
     minSeverity,
     triggerViewportQuery
   ]);
