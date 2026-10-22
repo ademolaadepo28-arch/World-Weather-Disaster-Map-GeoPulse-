@@ -73,6 +73,18 @@ export const MAP_PRESETS: MapPreset[] = [
   }
 ];
 
+export type LayerToggleKey =
+  | 'showWildfires'
+  | 'showVolcanoes'
+  | 'showStorms'
+  | 'showAnomalies'
+  | 'showEarthquakes'
+  | 'showPlateBoundaries'
+  | 'showWindField'
+  | 'showThermalHeat'
+  | 'showIsobars'
+  | 'clusteringEnabled';
+
 interface GeoState {
   // Clock state
   isPlaying: boolean;
@@ -124,7 +136,7 @@ interface GeoState {
   setSpeed: (speed: number) => void;
   setTimestamp: (ts: number) => void;
   stepDays: (days: number) => void;
-  toggleLayer: (layer: string) => void;
+  toggleLayer: (layer: LayerToggleKey) => void;
   setSeverityFilter: (sev: HazardSeverity | 'all') => void;
   setSearchQuery: (q: string) => void;
   selectHazard: (feature: HazardFeature | null) => void;
@@ -140,8 +152,8 @@ interface GeoState {
 }
 
 const DEFAULT_START_TS = new Date(Date.UTC(2020, 0, 1)).getTime();
-const DEFAULT_END_TS = new Date(Date.UTC(2025, 11, 31)).getTime();
-const DEFAULT_CURRENT_TS = new Date(Date.UTC(2023, 6, 15)).getTime(); // July 2023 midpoint
+const DEFAULT_END_TS = new Date(Date.UTC(2025, 11, 31, 23, 59, 59, 999)).getTime();
+const DEFAULT_CURRENT_TS = new Date(Date.UTC(2023, 6, 15, 23, 59, 59)).getTime(); // July 2023 midpoint
 
 export const useGeoStore = create<GeoState>((set, get) => ({
   isPlaying: false,
@@ -198,7 +210,7 @@ export const useGeoStore = create<GeoState>((set, get) => ({
   },
 
   toggleLayer: (layer) => {
-    set((state: any) => ({
+    set((state) => ({
       [layer]: !state[layer]
     }));
   },
@@ -209,7 +221,9 @@ export const useGeoStore = create<GeoState>((set, get) => ({
   selectHazard: (feature) => {
     set({ selectedHazard: feature });
     if (feature) {
-      const [lon, lat] = feature.geometry.coordinates;
+      const coords = feature.geometry.coordinates;
+      const lon = coords[0];
+      const lat = coords[1];
       const date = feature.properties.dateStr || '2023-01-01';
       // Fetch 60-day surrounding anomaly profile
       const start = new Date(new Date(date).getTime() - 30 * 86400000).toISOString().split('T')[0];
@@ -249,7 +263,8 @@ export const useGeoStore = create<GeoState>((set, get) => ({
     const preset = MAP_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
 
-    const targetTs = new Date(preset.targetDate).getTime();
+    // Use end-of-day UTC timestamp so events occurring on targetDate are included in GPU filter
+    const targetTs = new Date(`${preset.targetDate}T23:59:59.999Z`).getTime();
     set({
       activePresetId: preset.id,
       currentTimestamp: targetTs
@@ -262,6 +277,17 @@ export const useGeoStore = create<GeoState>((set, get) => ({
       if (preset.category === 'storm') set({ showStorms: true });
       if (preset.category === 'anomaly') set({ showAnomalies: true });
       if (preset.category === 'earthquake') set({ showEarthquakes: true });
+    }
+
+    // Automatically select the corresponding landmark feature if found in allFeatures
+    const matchingFeature = get().allFeatures.find((f) => {
+      const matchDate = f.properties.dateStr === preset.targetDate;
+      const matchCat = !preset.category || f.properties.category === preset.category;
+      return matchDate && matchCat;
+    });
+
+    if (matchingFeature) {
+      get().selectHazard(matchingFeature);
     }
 
     if (jumpToMapCallback) {
@@ -298,15 +324,25 @@ export const useGeoStore = create<GeoState>((set, get) => ({
       let maxTs = DEFAULT_END_TS;
 
       if (features.length > 0) {
-        minTs = Math.min(...features.map((f) => f.properties.timestamp));
-        maxTs = Math.max(...features.map((f) => f.properties.timestamp));
+        let detectedMin = features[0].properties.timestamp;
+        let detectedMax = features[0].properties.timestamp;
+        for (let i = 1; i < features.length; i++) {
+          const ts = features[i].properties.timestamp;
+          if (ts < detectedMin) detectedMin = ts;
+          if (ts > detectedMax) detectedMax = ts;
+        }
+        minTs = detectedMin;
+        maxTs = detectedMax;
       }
+
+      const clampedCurrent = Math.max(minTs, Math.min(maxTs, get().currentTimestamp));
 
       set({
         allFeatures: features,
         totalIndexedCount: features.length,
         minTimestamp: minTs,
         maxTimestamp: maxTs,
+        currentTimestamp: clampedCurrent,
         timelineMeta: metaData,
         climateGrid: gridData,
         isLoadingData: false
