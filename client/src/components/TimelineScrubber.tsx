@@ -27,15 +27,18 @@ export const TimelineScrubber: React.FC = () => {
     setFps
   } = useGeoStore();
 
-  const lastFrameTimeRef = useRef<number>(performance.now());
+  const lastFrameTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
-  const fpsTimerRef = useRef<number>(performance.now());
+  const fpsTimerRef = useRef<number>(0);
 
   // Continuous frame interpolation and clock logic inside requestAnimationFrame
   useEffect(() => {
     let animId: number;
 
     const tick = (now: number) => {
+      if (!fpsTimerRef.current) fpsTimerRef.current = now;
+      if (!lastFrameTimeRef.current) lastFrameTimeRef.current = now;
+
       // FPS measurement
       frameCountRef.current++;
       if (now - fpsTimerRef.current >= 1000) {

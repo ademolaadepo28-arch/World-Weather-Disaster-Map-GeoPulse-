@@ -410,7 +410,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({ onMapReady }) => {
       if (map.getLayer('hazard-halo')) {
         map.setFilter('hazard-halo', ['all', ['!', ['has', 'point_count']], combinedFilter] as any);
       }
-    } catch (e) {
+    } catch {
       // Ignore initial render race condition
     }
 
