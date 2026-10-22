@@ -1,0 +1,329 @@
+/* GeoPulse Design System & Core GIS Aesthetics */
+:root {
+  --bg-dark: #070a11;
+  --bg-card: rgba(13, 19, 33, 0.78);
+  --bg-card-hover: rgba(20, 29, 49, 0.9);
+  --bg-panel: rgba(10, 15, 27, 0.85);
+  
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(0, 229, 255, 0.25);
+  --border-accent: rgba(255, 85, 0, 0.35);
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  --color-wildfire: #ff5500;
+  --color-wildfire-glow: rgba(255, 85, 0, 0.4);
+  --color-volcano: #ff0055;
+  --color-volcano-glow: rgba(255, 0, 85, 0.4);
+  --color-storm: #00e5ff;
+  --color-storm-glow: rgba(0, 229, 255, 0.4);
+  --color-anomaly: #c084fc;
+  --color-anomaly-glow: rgba(192, 132, 252, 0.4);
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #06b6d4;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', var(--font-sans);
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --glass-blur: blur(16px);
+  --shadow-hud: 0 12px 36px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-glow-cyan: 0 0 20px rgba(0, 229, 255, 0.35);
+  --shadow-glow-orange: 0 0 20px rgba(255, 85, 0, 0.35);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.4);
+}
+
+/* Typography Utility */
+.font-mono {
+  font-family: var(--font-mono);
+}
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* Glassmorphism Panel Utilities */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-hud);
+}
+
+.glass-pill {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Glowing Pulsing Status Dots */
+.live-beacon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+.live-beacon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: beaconPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.beacon-online {
+  background: var(--color-success);
+}
+.beacon-online::after {
+  box-shadow: 0 0 10px var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.beacon-wildfire {
+  background: var(--color-wildfire);
+}
+.beacon-wildfire::after {
+  box-shadow: 0 0 10px var(--color-wildfire);
+  border: 1px solid var(--color-wildfire);
+}
+
+.beacon-volcano {
+  background: var(--color-volcano);
+}
+.beacon-volcano::after {
+  box-shadow: 0 0 10px var(--color-volcano);
+  border: 1px solid var(--color-volcano);
+}
+
+.beacon-storm {
+  background: var(--color-storm);
+}
+.beacon-storm::after {
+  box-shadow: 0 0 10px var(--color-storm);
+  border: 1px solid var(--color-storm);
+}
+
+.beacon-anomaly {
+  background: var(--color-anomaly);
+}
+.beacon-anomaly::after {
+  box-shadow: 0 0 10px var(--color-anomaly);
+  border: 1px solid var(--color-anomaly);
+}
+
+@keyframes beaconPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* Interactive Buttons */
+.btn-gis {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.btn-gis:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+.btn-gis:active {
+  transform: translateY(0);
+}
+.btn-gis.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--color-storm);
+  color: var(--color-storm);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Category Badges */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cat-wildfire {
+  background: rgba(255, 85, 0, 0.15);
+  color: #ff7733;
+  border: 1px solid rgba(255, 85, 0, 0.3);
+}
+.cat-volcano {
+  background: rgba(255, 0, 85, 0.15);
+  color: #ff3377;
+  border: 1px solid rgba(255, 0, 85, 0.3);
+}
+.cat-storm {
+  background: rgba(0, 229, 255, 0.15);
+  color: #33eeff;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+.cat-anomaly {
+  background: rgba(192, 132, 252, 0.15);
+  color: #d8b4fe;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+/* Custom Range Slider */
+.timeline-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 5;
+}
+.timeline-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #00e5ff;
+  box-shadow: 0 0 10px #00e5ff;
+  cursor: grab;
+  transition: transform 0.12s ease;
+}
+.timeline-slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 16px #00e5ff;
+}
+.timeline-slider-input::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.35);
+}
+
+/* MapLibre Dark Basemap Tweaks */
+.maplibregl-canvas {
+  outline: none;
+}
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  display: none !important; /* Managed by custom HUD */
+}
+.maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-top-color: rgba(13, 19, 33, 0.85) !important;
+}
+
+/* Scanline / Grid Background Overlay */
+.scanline-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(rgba(18, 25, 44, 0) 50%, rgba(0, 0, 0, 0.18) 50%),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.015), rgba(0, 0, 0, 0) 1px, transparent 1px);
+  background-size: 100% 4px, 40px 100%;
+  z-index: 2;
+  opacity: 0.6;
+}
+
+/* Animations */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-slow {
+  animation: spinSlow 12s linear infinite;
+}
