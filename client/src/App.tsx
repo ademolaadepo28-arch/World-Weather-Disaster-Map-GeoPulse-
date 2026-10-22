@@ -3,7 +3,6 @@ import type { Map as MapInstance } from 'maplibre-gl';
 import { useGeoStore } from './store/useGeoStore';
 import { MapCanvas } from './components/MapCanvas';
 import { WindParticleCanvas } from './components/WindParticleCanvas';
-import { ThermalHeatOverlay } from './components/ThermalHeatOverlay';
 import { TopNav } from './components/TopNav';
 import { ControlDeck } from './components/ControlDeck';
 import { TimelineScrubber } from './components/TimelineScrubber';
@@ -45,10 +44,7 @@ export const App: React.FC = () => {
       {/* 1. Base WebGL Map Canvas */}
       <MapCanvas onMapReady={handleMapReady} />
 
-      {/* 2. Chromatic Temperature Anomaly & Isobars Overlay */}
-      <ThermalHeatOverlay />
-
-      {/* 3. Fluid Dynamic Atmospheric Wind Particle Canvas */}
+      {/* 2. Fluid Dynamic Atmospheric Wind Particle Canvas */}
       <WindParticleCanvas />
 
       {/* 4. Scanline Tactical Grid Overlay */}

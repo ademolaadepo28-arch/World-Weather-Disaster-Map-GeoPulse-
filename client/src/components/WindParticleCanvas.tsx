@@ -15,13 +15,18 @@ export const WindParticleCanvas: React.FC = () => {
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!showWindField) {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      return;
-    }
-
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    if (!showWindField) {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -70,7 +75,6 @@ export const WindParticleCanvas: React.FC = () => {
         // Global circulation mathematical wind model
         // Normalized latitude from 0 (North) to 1 (South)
         const normY = p.y / height;
-        // Equator ~ 0.5. Mid-latitudes: 0.2-0.4 (North) and 0.6-0.8 (South)
         let vx = 0;
         let vy = Math.sin(time + p.x * 0.005) * 0.4;
 
@@ -119,8 +123,6 @@ export const WindParticleCanvas: React.FC = () => {
     };
   }, [showWindField]);
 
-  if (!showWindField) return null;
-
   return (
     <canvas
       ref={canvasRef}
@@ -132,7 +134,9 @@ export const WindParticleCanvas: React.FC = () => {
         height: '100%',
         pointerEvents: 'none',
         zIndex: 3,
-        opacity: 0.85
+        opacity: showWindField ? 0.85 : 0,
+        display: showWindField ? 'block' : 'none',
+        transition: 'opacity 0.25s ease'
       }}
     />
   );
